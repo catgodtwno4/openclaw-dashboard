@@ -61,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span className="text-xs text-slate-500 font-mono">{now}</span>
                 <button
                   onClick={() => setLang(l => l === 'en' ? 'zh' : 'en')}
-                  className="px-3 py-1 text-xs rounded border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
+                  className="i18n-badge"
                 >
                   {lang === 'zh' ? 'EN' : '中'}
                 </button>
@@ -74,16 +74,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        {/* Mobile Bottom Tab Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-slate-900 border-t border-slate-800 flex justify-around py-2 z-50 safe-area-bottom">
+        {/* Mobile Bottom Tab Bar — with blur backdrop */}
+        <nav className="bottom-nav fixed bottom-0 left-0 right-0 lg:hidden bg-slate-900/90 border-t border-slate-800/80 flex justify-around py-2 z-50 safe-area-bottom">
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 px-4 py-1 text-xs transition-colors ${
-                  active ? 'text-indigo-400' : 'text-slate-500'
+                className={`bottom-nav-tab flex flex-col items-center gap-0.5 px-4 py-1 text-xs transition-colors ${
+                  active ? 'bottom-nav-tab-active text-indigo-400' : 'text-slate-500'
                 }`}
               >
                 <span className="text-base">{item.icon}</span>

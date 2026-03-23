@@ -1,286 +1,55 @@
-'use client';
+/**
+ * Users page — Server Component
+ * Fetches data at request time and embeds it in the HTML.
+ */
+import { fetchDashboardData } from '../lib/ssr-data';
+import UsersClient from '../components/UsersClient';
+import type { DashboardData } from '../types';
 
-import { useState } from 'react';
-import { useDashboardData } from '../hooks/useDashboardData';
-import { User } from '../types';
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: '管理員',
-  editor: '編輯',
-  viewer: '訪客',
-  task_manager: '任務管理',
+const LAYER_NAMES: Record<string, string> = {
+  l0: 'L0 - Ephemeral',
+  l1: 'L1 - Working',
+  l2: 'L2 - Semantic',
+  l3: 'L3 - Episodic',
+  l2plus: 'L2+ Procedural',
+  l4: 'L4 - Archive',
+  gateway: 'Gateway',
+  disk: 'Disk',
 };
 
-const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-red-700',
-  editor: 'bg-amber-700',
-  viewer: 'bg-slate-700',
-  task_manager: 'bg-violet-700',
-};
+function transformMemory(raw: any): DashboardData['memory'] {
+  const statusMap: Record<string, 'healthy' | 'warning' | 'error'> = {
+    ok: 'healthy',
+    warn: 'warning',
+    error: 'error',
+  };
+  const toStatus = (s: string) => statusMap[s] ?? 'warning';
 
-const ALL_ROLES = ['admin', 'editor', 'viewer', 'task_manager'] as const;
-
-export default function UsersPage() {
-  const { data, loading, refetch } = useDashboardData();
-  const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formEmail, setFormEmail] = useState('');
-  const [formRole, setFormRole] = useState<User['role']>('viewer');
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const displayUsers = data?.users || [];
-
-  const showMsg = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+  const layers_detail: DashboardData['memory']['layers_detail'] = {
+    l0: { name: LAYER_NAMES.l0, status: toStatus(raw.l0?.status), files: raw.l0?.files, size: `${raw.l0?.size_kb} KB`, details: `${raw.l0?.files} files` },
+    l1: { name: LAYER_NAMES.l1, status: toStatus(raw.l1?.status), summaries: raw.l1?.summaries, model: raw.l1?.model, dbSize: `${raw.l1?.db_size_kb} KB`, details: `Model: ${raw.l1?.model}` },
+    l2: { name: LAYER_NAMES.l2, status: toStatus(raw.l2?.status), lanceFiles: raw.l2?.lance_files, embeddingModel: raw.l2?.embedding_model, rerank: raw.l2?.rerank, halflifeDays: raw.l2?.halflife_days, recencyWeight: raw.l2?.recency_weight, dbSize: `${raw.l2?.db_size_mb} MB`, details: `Embedding: ${raw.l2?.embedding_model}, Rerank: ${raw.l2?.rerank}` },
+    l3: { name: LAYER_NAMES.l3, status: toStatus(raw.l3?.status), documents: raw.l3?.documents, engine: raw.l3?.engine, details: `Engine: ${raw.l3?.engine}` },
+    l2plus: { name: LAYER_NAMES.l2plus, status: toStatus(raw.l2plus?.status), api: raw.l2plus?.api, searchLatency: `${raw.l2plus?.search_latency_ms}ms`, model: raw.l2plus?.llm_model, neo4j: raw.l2plus?.neo4j, qdrant: raw.l2plus?.qdrant, details: `API: ${raw.l2plus?.api}` },
+    l4: { name: LAYER_NAMES.l4, status: toStatus(raw.l4?.status), api: raw.l4?.api, searchLatency: `${raw.l4?.search_latency_ms}ms`, model: raw.l4?.llm_model, details: `API: ${raw.l4?.api}` },
+    gateway: { name: LAYER_NAMES.gateway, status: toStatus(raw.gateway?.status), criticalIssues: raw.gateway?.critical_issues, details: `${raw.gateway?.critical_issues} critical issues` },
+    disk: { name: LAYER_NAMES.disk, status: 'healthy', diskRoot: raw.disk?.root, diskUsers: raw.disk?.users, details: `Root: ${raw.disk?.root}, Users: ${raw.disk?.users}` },
   };
 
-  const openAdd = () => {
-    setEditingUser(null);
-    setFormEmail('');
-    setFormRole('viewer');
-    setShowModal(true);
-  };
+  return { raw, layers_detail };
+}
 
-  const openEdit = (user: User) => {
-    setEditingUser(user);
-    setFormEmail(user.email);
-    setFormRole(user.role);
-    setShowModal(true);
-  };
+export default async function UsersPage() {
+  const raw = await fetchDashboardData();
 
-  const handleSave = async () => {
-    if (!formEmail) return;
-    setSaving(true);
-    try {
-      if (editingUser) {
-        // PUT /api/users/:email
-        const res = await fetch(`/api/users/${encodeURIComponent(editingUser.email)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: formEmail, role: formRole }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showMsg('success', '用戶已更新');
-      } else {
-        // POST /api/users
-        const res = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: formEmail, role: formRole }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showMsg('success', '用戶已添加');
+  const initialData: DashboardData | null = raw
+    ? {
+        tasks: raw.tasks || [],
+        progress: raw.progress || [],
+        memory: transformMemory(raw.memory),
+        users: raw.users || [],
       }
-      setShowModal(false);
-      refetch();
-    } catch (e) {
-      showMsg('error', `保存失敗: ${e instanceof Error ? e.message : '未知錯誤'}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+    : null;
 
-  const handleDelete = async (email: string) => {
-    if (!confirm(`確定刪除用戶 ${email}？`)) return;
-    try {
-      const res = await fetch(`/api/users/${encodeURIComponent(email)}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showMsg('success', '用戶已刪除');
-      refetch();
-    } catch (e) {
-      showMsg('error', `刪除失敗: ${e instanceof Error ? e.message : '未知錯誤'}`);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-slate-400 animate-pulse">載入中...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-xl font-semibold">用戶管理</h1>
-        <div className="flex items-center gap-3 flex-wrap">
-          {message && (
-            <span className={`text-sm ${message.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {message.text}
-            </span>
-          )}
-          <button onClick={refetch} className="px-3 py-2 text-xs rounded bg-slate-700 hover:bg-slate-600 transition-colors">
-            ↻ 刷新
-          </button>
-          <button
-            onClick={openAdd}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-sm font-medium transition-colors"
-          >
-            + 添加用戶
-          </button>
-        </div>
-      </div>
-
-      {/* Desktop Table View */}
-      <div className="hidden md:block bg-slate-900 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-700">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">郵箱</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">角色</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">創建日期</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayUsers.map((user, idx) => (
-              <tr key={user.email} className={`border-b border-slate-800 ${idx % 2 === 0 ? '' : 'bg-slate-800/30'}`}>
-                <td className="px-4 py-3">
-                  <span className="font-mono text-sm">{user.email}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded text-xs text-white ${ROLE_COLORS[user.role] || 'bg-slate-700'}`}>
-                    {ROLE_LABELS[user.role] || user.role}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-400">{user.createdAt?.split('T')[0]}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => openEdit(user)}
-                      className="px-3 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 transition-colors"
-                    >
-                      編輯
-                    </button>
-                    <button
-                      onClick={() => handleDelete(user.email)}
-                      className="px-3 py-1 text-xs rounded bg-red-900/60 hover:bg-red-800 transition-colors"
-                    >
-                      刪除
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {displayUsers.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-slate-500">暫無用戶</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
-        {displayUsers.map((user) => (
-          <div key={user.email} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
-            <div className="space-y-3">
-              <div>
-                <div className="text-xs text-slate-500 mb-1">郵箱</div>
-                <div className="font-mono text-sm text-slate-100">{user.email}</div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500 mb-1">角色</div>
-                <span className={`px-2 py-0.5 rounded text-xs text-white inline-block ${ROLE_COLORS[user.role] || 'bg-slate-700'}`}>
-                  {ROLE_LABELS[user.role] || user.role}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500 mb-1">創建日期</div>
-                <div className="text-sm text-slate-300">{user.createdAt?.split('T')[0]}</div>
-              </div>
-              <div className="flex gap-2 pt-2 border-t border-slate-700">
-                <button
-                  onClick={() => openEdit(user)}
-                  className="flex-1 px-3 py-2 text-xs rounded bg-slate-700 hover:bg-slate-600 transition-colors"
-                >
-                  編輯
-                </button>
-                <button
-                  onClick={() => handleDelete(user.email)}
-                  className="flex-1 px-3 py-2 text-xs rounded bg-red-900/60 hover:bg-red-800 transition-colors"
-                >
-                  刪除
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-        {displayUsers.length === 0 && (
-          <p className="text-center text-slate-500 py-12 text-sm">暫無用戶</p>
-        )}
-      </div>
-
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: '管理員', value: displayUsers.filter(u => u.role === 'admin').length, color: 'bg-red-900/50' },
-          { label: '編輯', value: displayUsers.filter(u => u.role === 'editor').length, color: 'bg-amber-900/50' },
-          { label: '任務管理', value: displayUsers.filter(u => u.role === 'task_manager').length, color: 'bg-violet-900/50' },
-          { label: '訪客', value: displayUsers.filter(u => u.role === 'viewer').length, color: 'bg-slate-800' },
-        ].map(s => (
-          <div key={s.label} className={`${s.color} rounded-lg px-4 py-3 text-center`}>
-            <div className="text-2xl font-bold">{s.value}</div>
-            <div className="text-xs text-slate-400">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl mx-4">
-            <h2 className="text-lg font-semibold">
-              {editingUser ? '編輯用戶' : '添加用戶'}
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">郵箱</label>
-                <input
-                  type="email"
-                  value={formEmail}
-                  onChange={e => setFormEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">角色</label>
-                <select
-                  value={formRole}
-                  onChange={e => setFormRole(e.target.value as User['role'])}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                >
-                  {ALL_ROLES.map(r => (
-                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
-                disabled={saving}
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !formEmail}
-                className="px-4 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
-              >
-                {saving ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <UsersClient initialData={initialData} />;
 }
