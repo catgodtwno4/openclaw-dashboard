@@ -31,6 +31,7 @@ export default function TasksPage() {
   const [filter, setFilter] = useState(0);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [subtaskFilter, setSubtaskFilter] = useState(0);
+  const [mobileExpandedTask, setMobileExpandedTask] = useState<string | null>(null);
 
   // Auto-select first task when data loads
   useEffect(() => {
@@ -80,8 +81,8 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-4">
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+      {/* Stats Bar - 2 cols mobile / 3x2 tablet / 6 across desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {[
           { label: '總計', value: stats.total, color: 'bg-slate-700' },
           { label: '已完成', value: stats.done, color: 'bg-emerald-700' },
@@ -97,7 +98,7 @@ export default function TasksPage() {
         ))}
       </div>
 
-      {/* 3-Panel Layout */}
+      {/* 3-Panel Layout - responsive */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Panel: Task List */}
         <div className="bg-slate-900 rounded-xl p-4 space-y-3">
@@ -128,7 +129,13 @@ export default function TasksPage() {
             {filteredTasks.map((task, idx) => (
               <button
                 key={idx}
-                onClick={() => setSelectedTask(task)}
+                onClick={() => {
+                  setSelectedTask(task);
+                  // Mobile: expand inline
+                  if (window.innerWidth < 768) {
+                    setMobileExpandedTask(mobileExpandedTask === task.title ? null : task.title);
+                  }
+                }}
                 className={`w-full text-left p-3 rounded-lg border transition-all ${
                   selectedTask?.title === task.title
                     ? 'border-indigo-500 bg-indigo-950/40'
@@ -159,6 +166,30 @@ export default function TasksPage() {
                 <div className="flex gap-3 mt-2 text-xs text-slate-500">
                   <span>📅 {task.dueDate}</span>
                 </div>
+
+                {/* Mobile expanded: show subtask count hint */}
+                <div className="lg:hidden mt-2">
+                  <span className="text-xs text-indigo-400">
+                    {mobileExpandedTask === task.title ? '▲ 收合' : '▼ 展開'}
+                  </span>
+                </div>
+
+                {/* Mobile inline expanded content */}
+                {window.innerWidth < 768 && mobileExpandedTask === task.title && (
+                  <div className="mt-3 pt-3 border-t border-slate-700">
+                    <div className="text-xs text-slate-400 mb-1">子任務：{task.subtasks.filter((s: any) => s.done).length}/{task.subtasks.length} 完成</div>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {task.subtasks.slice(0, 8).map((st: any, si: number) => (
+                        <div key={si} className="flex items-center gap-2 text-xs">
+                          <div className={`w-3 h-3 rounded border flex items-center justify-center ${st.done ? 'bg-emerald-600 border-emerald-600' : 'border-slate-600 bg-slate-800'}`}>
+                            {st.done && <span className="text-white text-xs">✓</span>}
+                          </div>
+                          <span className={st.done ? 'line-through text-slate-500' : 'text-slate-300'}>{st.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </button>
             ))}
             {filteredTasks.length === 0 && (
@@ -167,8 +198,8 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* Middle Panel: Subtask Checklist */}
-        <div className="bg-slate-900 rounded-xl p-4 space-y-3">
+        {/* Middle Panel: Subtask Checklist - hidden on mobile unless task selected */}
+        <div className="hidden lg:block bg-slate-900 rounded-xl p-4 space-y-3">
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-3">子任務</h2>
 
           {selectedTask ? (
@@ -216,8 +247,8 @@ export default function TasksPage() {
           )}
         </div>
 
-        {/* Right Panel: Task Detail */}
-        <div className="bg-slate-900 rounded-xl p-4 space-y-4">
+        {/* Right Panel: Task Detail - hidden on mobile unless task selected */}
+        <div className="hidden lg:block bg-slate-900 rounded-xl p-4 space-y-4">
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">任務詳情</h2>
 
           {selectedTask ? (
@@ -293,6 +324,53 @@ export default function TasksPage() {
           )}
         </div>
       </div>
+
+      {/* Mobile Task Detail Drawer - shown below task list when task selected on mobile */}
+      {window.innerWidth < 768 && selectedTask && mobileExpandedTask && (
+        <div className="bg-slate-900 rounded-xl p-4 space-y-4 lg:hidden">
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">任務詳情</h2>
+          <div>
+            <h3 className="text-base font-semibold mb-2">{selectedTask.title}</h3>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className={`px-2 py-0.5 rounded text-xs text-white ${PRIORITY_COLORS[selectedTask.priority] || 'bg-slate-600'}`}>
+                {selectedTask.priority === 'high' ? '高' : selectedTask.priority === 'medium' ? '中' : '低'}
+              </span>
+              <span className="px-2 py-0.5 rounded text-xs bg-slate-700 text-slate-300">{selectedTask.category}</span>
+              <span className={`px-2 py-0.5 rounded text-xs ${STATUS_COLORS[selectedTask.status || 'pending']}`}>
+                {STATUS_LABELS[selectedTask.status || 'pending']}
+              </span>
+              {selectedTask.isOverdue && <span className="px-2 py-0.5 rounded text-xs bg-red-900/60 text-red-300">已逾期</span>}
+            </div>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex gap-4"><span className="text-slate-400">負責人:</span><span>{selectedTask.assignee}</span></div>
+            <div className="flex gap-4"><span className="text-slate-400">創建日期:</span><span>{selectedTask.createdDate}</span></div>
+            <div className="flex gap-4"><span className="text-slate-400">截止日期:</span><span className={selectedTask.isOverdue ? 'text-red-400' : ''}>{selectedTask.dueDate}</span></div>
+            <p className="text-slate-300 leading-relaxed">{selectedTask.description}</p>
+          </div>
+          {/* Progress */}
+          <div className="border-t border-slate-700 pt-4">
+            <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">相關活動</h4>
+            <div className="space-y-3">
+              {data?.progress?.filter((p: any) => p.title === selectedTask.title).slice(0, 3).map((entry: any, i: number) => (
+                <div key={i} className="flex gap-3 text-xs">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1" />
+                    {i < 2 && <div className="w-px h-8 bg-slate-700" />}
+                  </div>
+                  <div>
+                    <p className="text-slate-400">{entry.timestamp}</p>
+                    {entry.items.map((item: string, j: number) => <p key={j} className="text-slate-500">• {item}</p>)}
+                  </div>
+                </div>
+              ))}
+              {(!data?.progress?.some((p: any) => p.title === selectedTask.title)) && (
+                <p className="text-slate-600 text-xs">暫無活動記錄</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

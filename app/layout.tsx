@@ -6,9 +6,9 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 const navItems = [
-  { href: '/', label: 'Tasks', labelZh: '任务' },
-  { href: '/memory', label: 'Memory', labelZh: '记忆' },
-  { href: '/users', label: 'Users', labelZh: '用户' },
+  { href: '/', label: 'Tasks', labelZh: '任务', icon: '📋' },
+  { href: '/memory', label: 'Memory', labelZh: '记忆', icon: '🧠' },
+  { href: '/users', label: 'Users', labelZh: '用户', icon: '👤' },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -31,8 +31,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang={lang === 'zh' ? 'zh-TW' : 'en'}>
-      <body className="bg-slate-950 text-slate-100 min-h-screen">
-        <nav className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+      </head>
+      <body className="bg-slate-950 text-slate-100 min-h-screen pb-20 lg:pb-0">
+        {/* Desktop Top Nav */}
+        <nav className="hidden lg:block bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between h-14">
               <div className="flex items-center gap-1">
@@ -65,9 +69,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </nav>
+
         <main className="max-w-7xl mx-auto px-4 py-6">
           {children}
         </main>
+
+        {/* Mobile Bottom Tab Bar */}
+        <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-slate-900 border-t border-slate-800 flex justify-around py-2 z-50 safe-area-bottom">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-0.5 px-4 py-1 text-xs transition-colors ${
+                  active ? 'text-indigo-400' : 'text-slate-500'
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                <span>{lang === 'zh' ? item.labelZh : item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </body>
     </html>
   );

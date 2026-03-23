@@ -105,9 +105,9 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-xl font-semibold">用戶管理</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {message && (
             <span className={`text-sm ${message.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
               {message.text}
@@ -125,8 +125,8 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-slate-900 rounded-xl overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-slate-900 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-700">
@@ -175,8 +175,49 @@ export default function UsersPage() {
         </table>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {displayUsers.map((user) => (
+          <div key={user.email} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs text-slate-500 mb-1">郵箱</div>
+                <div className="font-mono text-sm text-slate-100">{user.email}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">角色</div>
+                <span className={`px-2 py-0.5 rounded text-xs text-white inline-block ${ROLE_COLORS[user.role] || 'bg-slate-700'}`}>
+                  {ROLE_LABELS[user.role] || user.role}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">創建日期</div>
+                <div className="text-sm text-slate-300">{user.createdAt?.split('T')[0]}</div>
+              </div>
+              <div className="flex gap-2 pt-2 border-t border-slate-700">
+                <button
+                  onClick={() => openEdit(user)}
+                  className="flex-1 px-3 py-2 text-xs rounded bg-slate-700 hover:bg-slate-600 transition-colors"
+                >
+                  編輯
+                </button>
+                <button
+                  onClick={() => handleDelete(user.email)}
+                  className="flex-1 px-3 py-2 text-xs rounded bg-red-900/60 hover:bg-red-800 transition-colors"
+                >
+                  刪除
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {displayUsers.length === 0 && (
+          <p className="text-center text-slate-500 py-12 text-sm">暫無用戶</p>
+        )}
+      </div>
+
       {/* Stats Summary */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: '管理員', value: displayUsers.filter(u => u.role === 'admin').length, color: 'bg-red-900/50' },
           { label: '編輯', value: displayUsers.filter(u => u.role === 'editor').length, color: 'bg-amber-900/50' },
@@ -193,7 +234,7 @@ export default function UsersPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl mx-4">
             <h2 className="text-lg font-semibold">
               {editingUser ? '編輯用戶' : '添加用戶'}
             </h2>

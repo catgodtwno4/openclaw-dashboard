@@ -31,6 +31,7 @@ export default function MemoryPage() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [fileLoading, setFileLoading] = useState(false);
+  const [mobileExpandedLayer, setMobileExpandedLayer] = useState<string | null>(null);
 
   const layers = data?.memory?.layers_detail;
   const selected = layers?.[selectedLayer as keyof typeof layers] as MemoryLayerInfo | undefined;
@@ -94,7 +95,7 @@ export default function MemoryPage() {
   return (
     <div className="space-y-4">
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {[
           { label: '層數', value: stats.total, color: 'bg-slate-700' },
           { label: '健康', value: stats.healthy, color: 'bg-emerald-700' },
@@ -127,7 +128,15 @@ export default function MemoryPage() {
               return (
                 <button
                   key={key}
-                  onClick={() => { setSelectedLayer(key); setSelectedFile(null); setFileContent(''); }}
+                  onClick={() => {
+                    setSelectedLayer(key);
+                    setSelectedFile(null);
+                    setFileContent('');
+                    // Mobile: toggle expand
+                    if (window.innerWidth < 768) {
+                      setMobileExpandedLayer(mobileExpandedLayer === key ? null : key);
+                    }
+                  }}
                   className={`w-full text-left p-3 rounded-lg border transition-all ${
                     isSelected ? 'border-indigo-500 bg-indigo-950/30' : 'border-slate-700 bg-slate-800/40 hover:border-slate-600'
                   }`}
@@ -140,14 +149,29 @@ export default function MemoryPage() {
                     <span className="text-xs text-slate-500 uppercase">{LAYER_SHORT[key]}</span>
                   </div>
                   <div className="text-xs text-slate-500 truncate">{layer.details || '—'}</div>
+                  {/* Mobile expand indicator */}
+                  <div className="lg:hidden mt-1">
+                    <span className="text-xs text-indigo-400">{mobileExpandedLayer === key ? '▲ 收合' : '▼ 展開配置'}</span>
+                  </div>
+
+                  {/* Mobile inline expanded config */}
+                  {window.innerWidth < 768 && mobileExpandedLayer === key && layer && (
+                    <div className="mt-3 pt-3 border-t border-slate-700 space-y-2">
+                      {layer.files !== undefined && <div className="flex justify-between text-xs"><span className="text-slate-500">文件數</span><span>{layer.files}</span></div>}
+                      {layer.size && <div className="flex justify-between text-xs"><span className="text-slate-500">大小</span><span>{layer.size}</span></div>}
+                      {layer.dbSize && <div className="flex justify-between text-xs"><span className="text-slate-500">資料庫</span><span>{layer.dbSize}</span></div>}
+                      {layer.model && <div className="flex justify-between text-xs"><span className="text-slate-500">模型</span><span className="truncate max-w-[180px]">{layer.model}</span></div>}
+                      {layer.searchLatency && <div className="flex justify-between text-xs"><span className="text-slate-500">搜尋延遲</span><span>{layer.searchLatency}</span></div>}
+                    </div>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Middle: Layer Config */}
-        <div className="bg-slate-900 rounded-xl p-4 space-y-4">
+        {/* Middle: Layer Config - hidden on mobile, shown on tablet/desktop */}
+        <div className="hidden lg:block bg-slate-900 rounded-xl p-4 space-y-4">
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">配置</h2>
           {selected ? (
             <div className="space-y-3">
@@ -262,7 +286,7 @@ export default function MemoryPage() {
         </div>
 
         {/* Right: Detail / L0 File Browser */}
-        <div className="bg-slate-900 rounded-xl p-4 space-y-4">
+        <div className="hidden lg:block bg-slate-900 rounded-xl p-4 space-y-4">
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
             {selectedLayer === 'l0' ? 'L0 文件列表' : '詳情'}
           </h2>
