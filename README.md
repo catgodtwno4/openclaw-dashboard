@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenClaw 儀表板
 
-## Getting Started
+> OpenClaw 系統狀態監控儀表板 — 即時查看 Agent、記憶體、任務、健康狀態。
 
-First, run the development server:
+## 這是什麼
+
+一個基於 Next.js + Tailwind CSS 的 Web 儀表板，搭配 Python API 後端，用於監控 OpenClaw 系統的各項指標：
+
+- 🤖 Agent 狀態（在線、離線、任務中）
+- 🧠 記憶體使用（LCM summaries、MemOS、Cognee）
+- 📋 任務追蹤（todo.md 同步顯示）
+- 🔧 系統健康（Gateway、磁碟、進程）
+- 📊 Cron 任務執行記錄
+
+## 技術棧
+
+| 層 | 技術 | 說明 |
+|----|------|------|
+| 前端 | Next.js 15 + Tailwind CSS | React Server Components |
+| 後端 | Python FastAPI | 讀取 OpenClaw 狀態 |
+| 資料源 | SQLite + Markdown | LCM DB + todo.md + progress-log.md |
+
+## 快速開始
 
 ```bash
+# 安裝依賴
+npm install
+
+# 啟動開發伺服器
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 開啟瀏覽器
+open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Python API 後端
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd api/
+pip install -r requirements.txt
+python main.py
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 相關倉庫
 
-## Learn More
+| 倉庫 | 說明 |
+|------|------|
+| [openclaw-lcm-setup](https://github.com/catgodtwno4/openclaw-lcm-setup) | LCM 安裝配置指南 |
+| [openclaw-five-layer-memory-nas](https://github.com/catgodtwno4/openclaw-five-layer-memory-nas) | 五層記憶棧 NAS 部署指南 |
+| [openclaw-browser](https://github.com/catgodtwno4/openclaw-browser) | 瀏覽器自動化 Skill |
+| [openclaw-im-control](https://github.com/catgodtwno4/openclaw-im-control) | 媒體傳送 Skill |
+| [lossless-claw](https://github.com/catgodtwno4/lossless-claw) | LCM 插件 Fork（含修復） |
 
-To learn more about Next.js, take a look at the following resources:
+## 許可證
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
